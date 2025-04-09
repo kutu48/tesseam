@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Data Inspeksi QC</title>
+  <title>SEAM SEALING INSPECTION</title>
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
   <style>
     body {
@@ -24,9 +24,12 @@
       background-color: #f0f0f0;
     }
   </style>
+  <!-- Tambahkan library jsPDF & html2canvas -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
-  <h2>Data Inspeksi QC</h2>
+  <h2>SEAM SEALING INSPECTION</h2>
 
   <div class="filter-container">
     <label for="startDate">Start Date:</label>
@@ -34,6 +37,7 @@
     <label for="endDate">End Date:</label>
     <input type="date" id="endDate">
     <button id="filterDate">Filter</button>
+    <button id="downloadPDF">Simpan ke PDF</button> <!-- Tombol simpan PDF -->
   </div>
 
   <table id="inspectionTable" class="display">
@@ -182,6 +186,22 @@
       const end = document.getElementById("endDate").value ? new Date(document.getElementById("endDate").value + 'T23:59:59') : null;
       const filtered = filterByDate(rawData, start, end);
       renderTable(filtered);
+    });
+
+    document.getElementById("downloadPDF").addEventListener("click", () => {
+      const tableElement = document.getElementById("inspectionTable");
+      html2canvas(tableElement).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('l', 'mm', 'a4');
+
+        const imgProps = pdf.getImageProperties(imgData);
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+        pdf.addImage(imgData, 'PNG', 10, 10, pdfWidth - 20, pdfHeight);
+        pdf.save("Data-Inspeksi-QC.pdf");
+      });
     });
 
     loadData();
