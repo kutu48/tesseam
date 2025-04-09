@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>TEKNIKAL SEAMSEALING INSPECTION</title>
+  <title>Data Inspeksi QC</title>
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
   <style>
     body {
@@ -26,7 +26,7 @@
   </style>
 </head>
 <body>
-  <h2>TEKNIKAL SEAMSEALING INSPECTION</h2>
+  <h2>Data Inspeksi QC</h2>
 
   <div class="filter-container">
     <label for="startDate">Start Date:</label>
@@ -105,34 +105,34 @@
       const tfoot = document.getElementById("table-footer");
       const tfootPercent = document.getElementById("table-footer-percent");
 
-      const totals = {};
-      headers.forEach(key => {
-        totals[key] = 0;
-      });
+      function updateFooter(filteredData) {
+        const totals = {};
+        headers.forEach(key => totals[key] = 0);
 
-      data.forEach(row => {
-        headers.forEach(key => {
-          if (sumColumns.includes(key)) {
-            totals[key] += parseInt(row[key]) || 0;
+        filteredData.forEach(row => {
+          headers.forEach(key => {
+            if (sumColumns.includes(key)) {
+              totals[key] += parseInt(row[key]) || 0;
+            }
+          });
+        });
+
+        const totalRow = headers.map(key => sumColumns.includes(key) ? `<td>${totals[key]}</td>` : "<td></td>");
+        const percentRow = headers.map(key => {
+          if (defectColumns.includes(key)) {
+            const totalCek = totals["TOTAL CEK"];
+            const percent = totalCek > 0 ? ((totals[key] / totalCek) * 100).toFixed(1) + "%" : "0%";
+            return `<td>${percent}</td>`;
+          } else if (key === "TOTAL CEK") {
+            return `<td>100%</td>`;
+          } else {
+            return "<td></td>";
           }
         });
-      });
 
-      const totalRow = headers.map(key => sumColumns.includes(key) ? `<td>${totals[key]}</td>` : "<td></td>");
-      tfoot.innerHTML = totalRow.join("");
-
-      const percentRow = headers.map(key => {
-        if (defectColumns.includes(key)) {
-          const totalCek = totals["TOTAL CEK"];
-          const percent = totalCek > 0 ? ((totals[key] / totalCek) * 100).toFixed(1) + "%" : "0%";
-          return `<td>${percent}</td>`;
-        } else if (key === "TOTAL CEK") {
-          return `<td>100%</td>`;
-        } else {
-          return "<td></td>";
-        }
-      });
-      tfootPercent.innerHTML = percentRow.join("");
+        tfoot.innerHTML = totalRow.join("");
+        tfootPercent.innerHTML = percentRow.join("");
+      }
 
       table = $('#inspectionTable').DataTable({
         pageLength: 10,
@@ -152,6 +152,19 @@
           });
         }
       });
+
+      table.on('draw', function () {
+        const filteredData = table.rows({ filter: 'applied' }).data().toArray().map(row => {
+          const obj = {};
+          headers.forEach((key, i) => {
+            obj[key] = row[i];
+          });
+          return obj;
+        });
+        updateFooter(filteredData);
+      });
+
+      table.draw();
     }
 
     function loadData() {
