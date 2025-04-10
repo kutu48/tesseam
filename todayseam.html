@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Data Inspeksi Hari Ini</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -21,6 +22,18 @@
     th {
       background-color: #f0f0f0;
     }
+    input.filter-input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 4px;
+    }
+    .summary {
+      margin-top: 20px;
+    }
+    canvas {
+      max-width: 100%;
+      margin-top: 30px;
+    }
   </style>
 </head>
 <body>
@@ -28,51 +41,189 @@
   <table id="data-table">
     <thead>
       <tr id="table-headers"></tr>
+      <tr id="filter-row"></tr>
     </thead>
     <tbody id="table-body"></tbody>
   </table>
 
+  <div class="summary" id="summary"></div>
+
+  <canvas id="lineChart" height="100"></canvas>
+  <canvas id="processChart" height="100"></canvas>
+
   <script>
     const sheetUrl = "https://opensheet.elk.sh/1sBuZkxrxZqPD88mVHFm1-PXvXuEJZoAMaN2bgand1Wc/Form%20Responses%201";
+    const numericFields = [
+      "TOTAL CEK",
+      "Sealing tidak center",
+      "Sealing tidak nempel",
+      "seam allowance tidak searah",
+      "potongan tidak rapih",
+      "Sisa benang di sealing"
+    ];
+
+    let filteredData = [];
 
     fetch(sheetUrl)
       .then(res => res.json())
       .then(data => {
         const today = new Date();
-        const todayDate = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`; // Format: MM/DD/YYYY
-
-        const filtered = data.filter(row => row.Timestamp && row.Timestamp.startsWith(todayDate));
-
-        if (filtered.length === 0) {
+        const todayDate = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`; // MM/DD/YYYY
+        filteredData = data.filter(row => row.Timestamp && row.Timestamp.startsWith(todayDate));
+        if (filteredData.length === 0) {
           document.getElementById("data-table").outerHTML = "<p>Tidak ada data untuk hari ini.</p>";
           return;
         }
 
-        // Buat header
-        const headers = Object.keys(filtered[0]);
-        const headerRow = document.getElementById("table-headers");
-        headers.forEach(header => {
-          const th = document.createElement("th");
-          th.textContent = header;
-          headerRow.appendChild(th);
-        });
-
-        // Buat baris data
-        const tableBody = document.getElementById("table-body");
-        filtered.forEach(row => {
-          const tr = document.createElement("tr");
-          headers.forEach(header => {
-            const td = document.createElement("td");
-            td.textContent = row[header];
-            tr.appendChild(td);
-          });
-          tableBody.appendChild(tr);
-        });
-      })
-      .catch(err => {
-        console.error("Gagal mengambil data:", err);
-        document.body.innerHTML += "<p>Gagal memuat data.</p>";
+        buildTable(filteredData);
+        calculateSummary(filteredData);
+        renderCharts(filteredData);
       });
+
+    function buildTable(data) {
+      const headers = Object.keys(data[0]);
+      const headerRow = document.getElementById("table-headers");
+      const filterRow = document.getElementById("filter-row");
+      const tableBody = document.getElementById("table-body");
+      headerRow.innerHTML = '';
+      filterRow.innerHTML = '';
+      tableBody.innerHTML = '';
+
+      headers.forEach(header => {
+        // Header
+        const th = document.createElement("th");
+        th.textContent = header;
+        headerRow.appendChild(th);
+
+        // Filter
+        const filterTh = document.createElement("th");
+        const input = document.createElement("input");
+        input.classList.add("filter-input");
+        input.dataset.column = header;
+        input.addEventListener("input", () => applyFilters(headers));
+        filterTh.appendChild(input);
+        filterRow.appendChild(filterTh);
+      });
+
+      renderRows(data, headers);
+    }
+
+    function renderRows(data, headers) {
+      const tableBody = document.getElementById("table-body");
+      tableBody.innerHTML = '';
+      data.forEach(row => {
+        const tr = document.createElement("tr");
+        headers.forEach(header => {
+          const td = document.createElement("td");
+          td.textContent = row[header] || '';
+          tr.appendChild(td);
+        });
+        tableBody.appendChild(tr);
+      });
+    }
+
+    function applyFilters(headers) {
+      const inputs = document.querySelectorAll(".filter-input");
+      let filtered = filteredData;
+
+      inputs.forEach(input => {
+        const value = input.value.toLowerCase();
+        const column = input.dataset.column;
+
+        if (value) {
+          filtered = filtered.filter(row =>
+            row[column] && row[column].toLowerCase().includes(value)
+          );
+        }
+      });
+
+      renderRows(filtered, headers);
+      calculateSummary(filtered);
+      renderCharts(filtered);
+    }
+
+    function calculateSummary(data) {
+      let summaryHTML = `<h3>Ringkasan Data</h3>`;
+      let total = {};
+      numericFields.forEach(field => total[field] = 0);
+
+      data.forEach(row => {
+        numericFields.forEach(field => {
+          const value = parseInt(row[field] || "0");
+          total[field] += value;
+        });
+      });
+
+      summaryHTML += `<table><tr><th>Item</th><th>Total</th><th>Persentase</th></tr>`;
+      numericFields.slice(1).forEach(field => {
+        const percent = total["TOTAL CEK"] > 0
+          ? ((total[field] / total["TOTAL CEK"]) * 100).toFixed(2) + "%"
+          : "0%";
+        summaryHTML += `<tr><td>${field}</td><td>${total[field]}</td><td>${percent}</td></tr>`;
+      });
+      summaryHTML += `</table>`;
+
+      document.getElementById("summary").innerHTML = summaryHTML;
+    }
+
+    function renderCharts(data) {
+      const groupBy = (array, key) =>
+        array.reduce((result, item) => {
+          const groupKey = item[key] || "Tidak diketahui";
+          result[groupKey] = result[groupKey] || 0;
+          result[groupKey] += 1;
+          return result;
+        }, {});
+
+      // By LOKASI (LINE)
+      const lineData = groupBy(data, "LOKASI");
+      const lineLabels = Object.keys(lineData);
+      const lineCounts = Object.values(lineData);
+
+      // By PROSES
+      const processData = groupBy(data, "PROSES");
+      const processLabels = Object.keys(processData);
+      const processCounts = Object.values(processData);
+
+      // Destroy old chart if exists
+      if (window.lineChartInstance) window.lineChartInstance.destroy();
+      if (window.processChartInstance) window.processChartInstance.destroy();
+
+      const lineCtx = document.getElementById("lineChart").getContext("2d");
+      const processCtx = document.getElementById("processChart").getContext("2d");
+
+      window.lineChartInstance = new Chart(lineCtx, {
+        type: 'bar',
+        data: {
+          labels: lineLabels,
+          datasets: [{
+            label: 'Jumlah Data per LINE',
+            data: lineCounts,
+            backgroundColor: '#4caf50'
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } }
+        }
+      });
+
+      window.processChartInstance = new Chart(processCtx, {
+        type: 'bar',
+        data: {
+          labels: processLabels,
+          datasets: [{
+            label: 'Jumlah Data per PROSES',
+            data: processCounts,
+            backgroundColor: '#2196f3'
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
   </script>
 </body>
 </html>
