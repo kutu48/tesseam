@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <title>SEAM SEALING INSPECTION</title>
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -11,38 +13,62 @@
     }
     table {
       width: 100%;
+      border-collapse: collapse;
+    }
+    table th, table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+    }
+    thead tr:first-child {
+      background-color: #007bff;
+      color: white;
     }
     .filter-container {
       margin-bottom: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
     }
-    .filter-container label,
-    .filter-container input {
-      margin-right: 10px;
+    label {
+      font-weight: bold;
     }
     tfoot tr {
       font-weight: bold;
       background-color: #f0f0f0;
     }
+    tfoot td.highlight {
+      background-color: #ffcccc !important;
+      color: #b30000;
+    }
+    @media screen and (max-width: 768px) {
+      .filter-container {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      table {
+        font-size: 12px;
+      }
+    }
   </style>
-  <!-- Tambahkan library jsPDF & html2canvas -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
   <h2>SEAM SEALING INSPECTION</h2>
 
   <div class="filter-container">
     <label for="startDate">Start Date:</label>
-    <input type="date" id="startDate">
+    <input type="datetime-local" id="startDate">
     <label for="endDate">End Date:</label>
-    <input type="date" id="endDate">
+    <input type="datetime-local" id="endDate">
     <button id="filterDate">Filter</button>
-    <button id="downloadPDF">Simpan ke PDF</button> <!-- Tombol simpan PDF -->
+    <button id="resetFilter">Reset</button>
+    <button id="exportExcel">Export ke Excel</button>
   </div>
 
-  <table id="inspectionTable" class="display">
+  <table id="inspectionTable" class="display nowrap">
     <thead>
       <tr id="table-header"></tr>
+      <tr id="filter-row"></tr> <!-- Filter dropdown row -->
     </thead>
     <tbody id="table-body"></tbody>
     <tfoot>
@@ -51,8 +77,12 @@
     </tfoot>
   </table>
 
+  <!-- LIBRARY -->
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
   <script>
     const sheetURL = "https://opensheet.elk.sh/1sBuZkxrxZqPD88mVHFm1-PXvXuEJZoAMaN2bgand1Wc/Form%20Responses%201";
     let rawData = [];
@@ -61,15 +91,14 @@
       "TOTAL CEK", "Sealing tidak center", "Sealing tidak nempel",
       "seam allowance tidak searah", "potongan tidak rapih", "Sisa benang di sealing"
     ];
-    const defectColumns = [
-      "Sealing tidak center", "Sealing tidak nempel",
-      "seam allowance tidak searah", "potongan tidak rapih", "Sisa benang di sealing"
-    ];
+    const defectColumns = sumColumns.slice(1);
 
     function parseDate(str) {
       const [month, day, yearAndTime] = str.split('/');
-      const [year, time] = yearAndTime.split(' ');
-      return new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${time || "00:00:00"}`);
+      const [year, time = "00:00:00"] = yearAndTime.split(' ');
+      const [hour = "00", minute = "00", second = "00"] = time.split(':');
+      const cleanHour = parseInt(hour).toString(); // Hapus leading zero
+      return new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${cleanHour.padStart(2, '0')}:${minute || '00'}:${second || '00'}`);
     }
 
     function filterByDate(data, start, end) {
@@ -83,16 +112,25 @@
       if (table) {
         table.destroy();
         $('#inspectionTable tbody').empty();
+        $('#inspectionTable thead tr#table-header').empty();
+        $('#inspectionTable thead tr#filter-row').empty();
         $('#inspectionTable tfoot tr').empty();
       }
 
       const headers = Object.keys(data[0]);
       const headerRow = document.getElementById("table-header");
-      headerRow.innerHTML = "";
+      const filterRow = document.getElementById("filter-row");
       headers.forEach(key => {
         const th = document.createElement("th");
         th.textContent = key;
         headerRow.appendChild(th);
+
+        const td = document.createElement("td");
+        const select = document.createElement("select");
+        select.innerHTML = `<option value="">All</option>`;
+        select.setAttribute("data-column", key);
+        td.appendChild(select);
+        filterRow.appendChild(td);
       });
 
       const tbody = document.getElementById("table-body");
@@ -125,8 +163,9 @@
         const percentRow = headers.map(key => {
           if (defectColumns.includes(key)) {
             const totalCek = totals["TOTAL CEK"];
-            const percent = totalCek > 0 ? ((totals[key] / totalCek) * 100).toFixed(1) + "%" : "0%";
-            return `<td>${percent}</td>`;
+            const percent = totalCek > 0 ? ((totals[key] / totalCek) * 100).toFixed(1) : "0";
+            const isHigh = parseFloat(percent) > 5;
+            return `<td class="${isHigh ? 'highlight' : ''}">${percent}%</td>`;
           } else if (key === "TOTAL CEK") {
             return `<td>100%</td>`;
           } else {
@@ -139,22 +178,27 @@
       }
 
       table = $('#inspectionTable').DataTable({
-        pageLength: 10,
-        initComplete: function () {
-          this.api().columns().every(function () {
-            const column = this;
-            const select = $('<select><option value="">All</option></select>')
-              .appendTo($(column.header()))
-              .on('change', function () {
-                const val = $.fn.dataTable.util.escapeRegex($(this).val());
-                column.search(val ? '^' + val + '$' : '', true, false).draw();
-              });
+        scrollX: true,
+        pageLength: 10
+      });
 
-            column.data().unique().sort().each(function (d) {
-              if (d) select.append('<option value="' + d + '">' + d + '</option>');
-            });
-          });
-        }
+      // Isi select options & aktifkan filter
+      headers.forEach((key, i) => {
+        const column = table.column(i);
+        const select = filterRow.querySelector(`select[data-column="${key}"]`);
+        column.data().unique().sort().each(function (d) {
+          if (d) {
+            const option = document.createElement("option");
+            option.value = d;
+            option.textContent = d;
+            select.appendChild(option);
+          }
+        });
+
+        $(select).on('change', function () {
+          const val = $.fn.dataTable.util.escapeRegex($(this).val());
+          column.search(val ? '^' + val + '$' : '', true, false).draw();
+        });
       });
 
       table.on('draw', function () {
@@ -171,6 +215,44 @@
       table.draw();
     }
 
+    function exportToExcel() {
+      if (!table) return;
+      const headers = [];
+      $('#inspectionTable thead tr#table-header th').each(function () {
+        headers.push($(this).text());
+      });
+
+      const filteredData = table.rows({ filter: 'applied' }).data().toArray();
+      const data = filteredData.map(row => {
+        const obj = {};
+        headers.forEach((key, i) => {
+          obj[key] = row[i];
+        });
+        return obj;
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Inspeksi");
+
+      XLSX.writeFile(workbook, "Data-Inspeksi-QC.xlsx");
+    }
+
+    document.getElementById("filterDate").addEventListener("click", () => {
+      const start = document.getElementById("startDate").value ? new Date(document.getElementById("startDate").value) : null;
+      const end = document.getElementById("endDate").value ? new Date(document.getElementById("endDate").value) : null;
+      const filtered = filterByDate(rawData, start, end);
+      renderTable(filtered);
+    });
+
+    document.getElementById("resetFilter").addEventListener("click", () => {
+      document.getElementById("startDate").value = "";
+      document.getElementById("endDate").value = "";
+      renderTable(rawData);
+    });
+
+    document.getElementById("exportExcel").addEventListener("click", exportToExcel);
+
     function loadData() {
       fetch(sheetURL)
         .then(res => res.json())
@@ -180,29 +262,6 @@
         })
         .catch(err => console.error("Gagal mengambil data:", err));
     }
-
-    document.getElementById("filterDate").addEventListener("click", () => {
-      const start = document.getElementById("startDate").value ? new Date(document.getElementById("startDate").value) : null;
-      const end = document.getElementById("endDate").value ? new Date(document.getElementById("endDate").value + 'T23:59:59') : null;
-      const filtered = filterByDate(rawData, start, end);
-      renderTable(filtered);
-    });
-
-    document.getElementById("downloadPDF").addEventListener("click", () => {
-      const tableElement = document.getElementById("inspectionTable");
-      html2canvas(tableElement).then(canvas => {
-        const imgData = canvas.toDataURL('image/png');
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('l', 'mm', 'a4');
-
-        const imgProps = pdf.getImageProperties(imgData);
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-        pdf.addImage(imgData, 'PNG', 10, 10, pdfWidth - 20, pdfHeight);
-        pdf.save("Data-Inspeksi-QC.pdf");
-      });
-    });
 
     loadData();
   </script>
