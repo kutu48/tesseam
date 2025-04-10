@@ -160,14 +160,12 @@
         <th>NIK</th>
         <th>Nama</th>
         <th>Proses</th>
-        <th>Suhu Teflon</th>
         <th>Total Cek</th>
         <th>Sealing tidak center</th>
         <th>Sealing tidak nempel</th>
         <th>Seam allowance tidak searah</th>
         <th>Potongan tidak rapih</th>
         <th>Sisa benang di sealing</th>
-        <th>Teknisi</th>
         <th>Style</th>
       </tr>
     </thead>
@@ -244,14 +242,12 @@
           <td>${row['NIK OP']}</td>
           <td>${nikData[row['NIK OP']] || '-'}</td>
           <td>${row.PROSES}</td>
-          <td>${row['SUHU TEFLON']}</td>
           <td>${row['TOTAL CEK']}</td>
           <td>${row['Sealing tidak center']}</td>
           <td>${row['Sealing tidak nempel']}</td>
           <td>${row['seam allowance tidak searah']}</td>
           <td>${row['potongan tidak rapih']}</td>
           <td>${row['Sisa benang di sealing']}</td>
-          <td>${row.TEKNISI}</td>
           <td>${row.STYLE}</td>
         `;
         tbody.appendChild(tr);
