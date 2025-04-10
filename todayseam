@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Data Inspeksi Hari Ini</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background-color: #f0f0f0;
+    }
+  </style>
+</head>
+<body>
+  <h2>Data Inspeksi Hari Ini</h2>
+  <table id="data-table">
+    <thead>
+      <tr id="table-headers"></tr>
+    </thead>
+    <tbody id="table-body"></tbody>
+  </table>
+
+  <script>
+    const sheetUrl = "https://opensheet.elk.sh/1sBuZkxrxZqPD88mVHFm1-PXvXuEJZoAMaN2bgand1Wc/Form%20Responses%201";
+
+    fetch(sheetUrl)
+      .then(res => res.json())
+      .then(data => {
+        const today = new Date();
+        const todayDate = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`; // Format: MM/DD/YYYY
+
+        const filtered = data.filter(row => row.Timestamp && row.Timestamp.startsWith(todayDate));
+
+        if (filtered.length === 0) {
+          document.getElementById("data-table").outerHTML = "<p>Tidak ada data untuk hari ini.</p>";
+          return;
+        }
+
+        // Buat header
+        const headers = Object.keys(filtered[0]);
+        const headerRow = document.getElementById("table-headers");
+        headers.forEach(header => {
+          const th = document.createElement("th");
+          th.textContent = header;
+          headerRow.appendChild(th);
+        });
+
+        // Buat baris data
+        const tableBody = document.getElementById("table-body");
+        filtered.forEach(row => {
+          const tr = document.createElement("tr");
+          headers.forEach(header => {
+            const td = document.createElement("td");
+            td.textContent = row[header];
+            tr.appendChild(td);
+          });
+          tableBody.appendChild(tr);
+        });
+      })
+      .catch(err => {
+        console.error("Gagal mengambil data:", err);
+        document.body.innerHTML += "<p>Gagal memuat data.</p>";
+      });
+  </script>
+</body>
+</html>
