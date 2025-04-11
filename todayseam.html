@@ -96,6 +96,7 @@
 
   <script>
     const sheetURL = "https://opensheet.elk.sh/1sBuZkxrxZqPD88mVHFm1-PXvXuEJZoAMaN2bgand1Wc/Form%20Responses%201";
+    const nikURL = "https://opensheet.elk.sh/1sBuZkxrxZqPD88mVHFm1-PXvXuEJZoAMaN2bgand1Wc/Nik";
     const defectColumns = [
       "Sealing tidak center", "Sealing tidak nempel", "seam allowance tidak searah",
       "potongan tidak rapih", "Sisa benang di sealing"
@@ -155,7 +156,6 @@
         lineDefects[lokasi] = (lineDefects[lokasi] || 0) + totalDefect;
       });
 
-      // Sort berdasarkan defect terbesar
       const sortedEntries = Object.entries(lineDefects).sort((a, b) => b[1] - a[1]);
       const sortedLabels = sortedEntries.map(entry => entry[0]);
       const sortedData = sortedEntries.map(entry => entry[1]);
@@ -180,17 +180,33 @@
     }
 
     $(document).ready(function () {
-      $.getJSON(sheetURL, function (data) {
-        const todayData = data.filter(row => isToday(row.Timestamp));
-        const columns = Object.keys(todayData[0] || {});
+      $.when($.getJSON(sheetURL), $.getJSON(nikURL)).done(function (dataResp, nikResp) {
+        const data = dataResp[0];
+        const nikList = nikResp[0];
 
-        // Header
+        const nikMap = {};
+        nikList.forEach(item => {
+          nikMap[item.NIK] = item.NAMA;
+        });
+
+        const todayData = data.filter(row => isToday(row.Timestamp)).map(row => {
+          const newRow = { ...row };
+          newRow["NAMA"] = nikMap[row["NIK OP"]] || "TIDAK DIKENAL";
+          return newRow;
+        });
+
+        const columns = Object.keys(todayData[0] || {}).filter(col => col !== "SUHU TEFLON" && col !== "NAMA");
+
+
+        // Insert "NAMA" after "NIK OP"
+        const nikIndex = columns.indexOf("NIK OP");
+        if (nikIndex !== -1) columns.splice(nikIndex + 1, 0, "NAMA");
+
         columns.forEach(col => {
           $('#tableHeader').append(`<th>${col}</th>`);
           $('#filterRow').append(`<th></th>`);
         });
 
-        // Load table
         const table = $('#dataTable').DataTable({
           data: todayData,
           columns: columns.map(col => ({ data: col })),
@@ -200,11 +216,9 @@
           }
         });
 
-        // Initial summary & chart
         renderSummary(table.rows({ search: 'applied' }).data().toArray());
         renderChart(todayData);
 
-        // Update summary on filter
         table.on('search.dt', function () {
           const filteredData = table.rows({ search: 'applied' }).data().toArray();
           renderSummary(filteredData);
