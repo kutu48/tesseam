@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manajemen User</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 5vw;
+      margin: 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      margin-bottom: 30px;
+      font-size: 3.5vw;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ddd;
+      text-align: center;
+    }
+    th {
+      background: #4CAF50;
+      color: white;
+    }
+    tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+    button {
+      padding: 8px 10px;
+      background: #2196F3;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0b7dda;
+    }
+    #editForm, #addUserForm {
+      display: none;
+      background: #fff;
+      padding: 5vw;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    #editForm input, #addUserForm input,
+    #addUserForm select {
+      width: 100%;
+      padding: 10px;
+      margin: 6px 0;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+    @media (min-width: 600px) {
+      table {
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h2>👥 Manajemen User</h2>
+  <button onclick="showAddUserForm()">Tambah User Baru</button>
+
+  <table id="userTable">
+    <thead>
+      <tr>
+        <th>Username</th>
+        <th>Password</th>
+        <th>Akses Admin</th>
+        <th>Akses User</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div id="editForm">
+    <h3>Edit User</h3>
+    <input type="text" id="editUsername" readonly>
+    <input type="text" id="editPassword" placeholder="Password">
+    <select id="editAdmin">
+      <option value="TRUE">TRUE</option>
+      <option value="FALSE">FALSE</option>
+    </select>
+    <select id="editUser">
+      <option value="TRUE">TRUE</option>
+      <option value="FALSE">FALSE</option>
+    </select>
+    <button onclick="submitEdit()">💾 Simpan</button>
+  </div>
+
+  <div id="addUserForm">
+    <h3>Tambah User Baru</h3>
+    <input type="text" id="newUsername" placeholder="Username">
+    <input type="text" id="newPassword" placeholder="Password">
+    <select id="newAdmin">
+      <option value="TRUE">TRUE</option>
+      <option value="FALSE">FALSE</option>
+    </select>
+    <select id="newUser">
+      <option value="TRUE">TRUE</option>
+      <option value="FALSE">FALSE</option>
+    </select>
+    <button onclick="submitAddUser()">Tambah User</button>
+  </div>
+
+  <script>
+    const SHEET_URL  = "https://opensheet.elk.sh/1OQiqtG9-NDDCmvJvmBjdUNGCiMXmL5vNqfp7Gf5h728/login";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzuxwrz-saTD714CYG84Xwn0fQiVC-fZNVjffRoNsUNlWfEfg1y6lkIQTgGx3WLNuuF/exec";
+    let userData = [];
+
+    function loadUsers() {
+      fetch(SHEET_URL)
+        .then(res => res.json())
+        .then(data => {
+          userData = data;
+          const tbody = document.querySelector("#userTable tbody");
+          tbody.innerHTML = "";
+          data.forEach((user, i) => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+              <td>${user.USERNAME}</td>
+              <td>${user.PASSWORD}</td>
+              <td>${user["admin.html"]}</td>
+              <td>${user["user.html"]}</td>
+              <td><button onclick="editUser(${i})">Edit</button></td>
+            `;
+            tbody.appendChild(row);
+          });
+        })
+        .catch(err => {
+          console.error(err);
+          alert("❌ Gagal memuat data dari Google Sheet.");
+        });
+    }
+
+    function showAddUserForm() {
+      document.getElementById("addUserForm").style.display = "block";
+    }
+
+    function editUser(index) {
+      const user = userData[index];
+      document.getElementById("editUsername").value = user.USERNAME;
+      document.getElementById("editPassword").value = user.PASSWORD;
+      document.getElementById("editAdmin").value = user["admin.html"];
+      document.getElementById("editUser").value = user["user.html"];
+      document.getElementById("editForm").style.display = "block";
+    }
+
+    function submitEdit() {
+      const updated = {
+        USERNAME: document.getElementById("editUsername").value,
+        PASSWORD: document.getElementById("editPassword").value,
+        "admin.html": document.getElementById("editAdmin").value,
+        "user.html": document.getElementById("editUser").value
+      };
+
+      fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated)
+      })
+      .then(res => res.text())
+      .then(msg => {
+        alert("📝 Respon: " + msg);
+        document.getElementById("editForm").style.display = "none";
+        loadUsers();
+      })
+      .catch(err => {
+        console.error(err);
+        alert("❌ Gagal update: " + err);
+      });
+    }
+
+    function submitAddUser() {
+      const newUser = {
+        USERNAME: document.getElementById("newUsername").value,
+        PASSWORD: document.getElementById("newPassword").value,
+        "admin.html": document.getElementById("newAdmin").value,
+        "user.html": document.getElementById("newUser").value
+      };
+
+      fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newUser)
+      })
+      .then(res => res.text())
+      .then(msg => {
+        alert("📝 Respon: " + msg);
+        document.getElementById("addUserForm").style.display = "none";
+        loadUsers();
+      })
+      .catch(err => {
+        console.error(err);
+        alert("❌ Gagal menambah user: " + err);
+      });
+    }
+
+    // Muat data saat halaman siap
+    window.addEventListener('DOMContentLoaded', loadUsers);
+  </script>
+
+</body>
+</html>
