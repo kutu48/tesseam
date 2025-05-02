@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Form QC</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 5vw;
+      background: linear-gradient(135deg, #56ab2f, #a8e063, #f3904f, #3a3a3a);
+      background-size: 400% 400%;
+      animation: gradientBG 15s ease infinite;
+      color: #fff;
+      font-size: 3vw;
+      margin: 0;
+    }
+
+    @keyframes gradientBG {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      margin: auto;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 5vw;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      font-size: 1rem;
+    }
+
+    label {
+      font-weight: bold;
+      margin-top: 10px;
+      display: block;
+    }
+
+    input, select, button {
+      padding: 8px;
+      margin-top: 5px;
+      width: 100%;
+      border-radius: 6px;
+      border: none;
+      font-size: 1rem;
+    }
+
+    button {
+      background-color: #56ab2f;
+      color: #fff;
+      font-weight: bold;
+      transition: background-color 0.3s;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #f3904f;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    table td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: center;
+      cursor: pointer;
+      background-color: #ffffff20;
+      color: #fff;
+      transition: background-color 0.3s;
+    }
+
+    table td:hover {
+      background-color: #ffffff40;
+    }
+
+    .defect-entry {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+      align-items: center;
+    }
+
+    .defect-entry .defect-select {
+      width: 100%;
+    }
+
+    .defect-entry .defect-count {
+      flex: 1;
+      max-width: 60px;
+    }
+
+    .defect-entry button {
+      flex: 0;
+      padding: 0 10px;
+    }
+
+    .select-container {
+      flex: 3;
+      width: 30%;
+      min-width: 120px;
+      max-width: 270px;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        font-size: 4vw;
+      }
+      .container {
+        padding: 4vw;
+      }
+      .defect-entry {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .select-container {
+        width: 100%;
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Form Input QC</h2>
+    <form id="qcForm">
+      <label for="datetime">Date Time</label>
+      <input type="datetime-local" id="datetime" name="Date time" readonly style="background-color: #fff; color: #000;">
+
+      <label>LINE</label>
+      <table id="lineTable"></table>
+      <input type="text" id="line" name="LINE" readonly>
+
+      <label for="qcName">QC NAME</label>
+      <button type="button" onclick="scanBarcode('qcName')">Scan QC Name</button>
+      <input type="text" id="qcName" name="QC NAME" required readonly style="width: 100%; margin-top: 10px; background-color: #fff; color: #000;">
+
+      <label for="kp">KP</label>
+      <select id="kp" name="KP" required></select>
+
+      <label for="style">STYLE</label>
+      <select id="style" name="STYLE" required></select>
+
+      <label for="color">COLOR</label>
+      <select id="color" name="COLOR" required></select>
+
+      <label for="size">SIZE</label>
+      <select id="size" name="SIZE" required></select>
+	  
+	  <label for="defectArea">DEFECT AREA</label>
+	  <select id="defectArea" name="DEFECT AREA" required></select>
+
+      <label for="checkedBy">CHECKED BY</label>
+      <input type="text" id="checkedBy" name="CHECKED BY" required>
+
+      <label for="totalInspeksi">TOTAL INSPEKSI</label>
+      <input type="number" id="totalInspeksi" name="TOTAL INSPEKSI" required>
+
+      <h3>Temuan Defect</h3>
+      <div id="defectContainer"></div>
+      <button type="button" onclick="addDefect()">Tambah Defect</button>
+	  
+	  <h3>Upload Gambar</h3>
+	  <label>Gambar 1</label>
+	  <input type="file" id="imageUpload1" name="image1" accept="image/*">
+	  <label>Gambar 2</label>
+	  <input type="file" id="imageUpload2" name="image2" accept="image/*">
+	  <label>Gambar 3</label>
+	  <input type="file" id="imageUpload3" name="image3" accept="image/*">
+
+      <br><br>
+      <button type="submit">Submit</button>
+    </form>
+  </div>
+
+<style>
+#spinner {
+  display: none;
+  position: fixed;
+  z-index: 999;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.spinner-border {
+  width: 80px;
+  height: 80px;
+  border: 10px solid #f3f3f3;
+  border-top: 10px solid #56ab2f;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+</style>
+<div id="spinner">
+  <div class="spinner-border"></div>
+</div>
+
+<script>
+const lineSheetURL = "https://opensheet.elk.sh/1sBuZkxrxZqPD88mVHFm1-PXvXuEJZoAMaN2bgand1Wc/lokasi";
+const defectSheetURL = "https://opensheet.elk.sh/1OQiqtG9-NDDCmvJvmBjdUNGCiMXmL5vNqfp7Gf5h728/defect";
+const dataSheetURL = "https://opensheet.elk.sh/1OQiqtG9-NDDCmvJvmBjdUNGCiMXmL5vNqfp7Gf5h728/DATA";
+
+let defectTypes = [];
+let rawData = [];
+
+function setDateTimeWIB() {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Jakarta",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+    });
+    const parts = formatter.formatToParts(now);
+    const obj = {};
+    parts.forEach(({ type, value }) => obj[type] = value);
+    document.getElementById("datetime").value = `${obj.year}-${obj.month}-${obj.day}T${obj.hour}:${obj.minute}`;
+}
+
+async function loadLines() {
+    const res = await fetch(lineSheetURL);
+    const data = await res.json();
+    const table = document.getElementById("lineTable");
+    let row;
+    data.forEach((item, index) => {
+        if (index % 4 === 0) row = table.insertRow();
+        const cell = row.insertCell();
+        const lineName = Object.values(item)[0];
+        cell.textContent = lineName;
+        cell.onclick = () => document.getElementById("line").value = lineName;
+    });
+}
+
+async function loadDefects() {
+    const res = await fetch(defectSheetURL);
+    const data = await res.json();
+    defectTypes = data.map(d => d.TYPE).filter(Boolean);
+}
+
+async function loadKPStyleOptions() {
+    const res = await fetch(dataSheetURL);
+    rawData = await res.json();
+    const kpSelect = document.getElementById("kp");
+    const styleSelect = document.getElementById("style");
+    const colorSelect = document.getElementById("color");
+    const sizeSelect = document.getElementById("size");
+
+    const uniqueKP = [...new Set(rawData.map(item => item.KP))];
+    const uniqueStyle = [...new Set(rawData.map(item => item.STYLE))];
+
+    createOptionWithOthers(kpSelect, uniqueKP);
+    createOptionWithOthers(styleSelect, uniqueStyle);
+
+    kpSelect.addEventListener("change", () => {
+        handleOtherInput("kp");
+        updateColorSizeOptions();
+    });
+    styleSelect.addEventListener("change", () => {
+        handleOtherInput("style");
+        updateColorSizeOptions();
+    });
+    colorSelect.addEventListener("change", () => handleOtherInput("color"));
+    sizeSelect.addEventListener("change", () => handleOtherInput("size"));
+}
+
+async function loadDefectAreaOptions() {
+    const res = await fetch(dataSheetURL);
+    const data = await res.json();
+    const defectAreaSelect = document.getElementById("defectArea");
+    const uniqueDefectAreas = [...new Set(data.map(item => item['DEFECT AREA']).filter(Boolean))];
+    createOptionWithOthers(defectAreaSelect, uniqueDefectAreas);
+    defectAreaSelect.addEventListener("change", () => handleOtherInput("defectArea"));
+}
+
+function createOptionWithOthers(selectElement, options) {
+    selectElement.innerHTML = "";
+    options.forEach(val => {
+        const opt = document.createElement("option");
+        opt.value = val;
+        opt.textContent = val;
+        selectElement.appendChild(opt);
+    });
+    const otherOpt = document.createElement("option");
+    otherOpt.value = "__other__";
+    otherOpt.textContent = "Lainnya...";
+    selectElement.appendChild(otherOpt);
+}
+
+function handleOtherInput(selectId) {
+    const select = document.getElementById(selectId);
+    let otherInput = document.getElementById(selectId + "_other");
+    if (select.value === "__other__") {
+        if (!otherInput) {
+            otherInput = document.createElement("input");
+            otherInput.type = "text";
+            otherInput.id = selectId + "_other";
+            otherInput.name = select.name;
+            otherInput.placeholder = "Masukkan manual...";
+            otherInput.required = true;
+            select.insertAdjacentElement("afterend", otherInput);
+            select.name = "";
+        }
+    } else {
+        if (otherInput) {
+            otherInput.remove();
+            select.name = selectId.toUpperCase();
+        }
+    }
+}
+
+function updateColorSizeOptions() {
+    const kp = document.getElementById("kp").value;
+    const filtered = rawData.filter(item => item.KP === kp);
+    const uniqueColors = [...new Set(filtered.map(item => item.COLOR))];
+    const uniqueSizes = [...new Set(filtered.map(item => item.SIZE))];
+    createOptionWithOthers(document.getElementById("color"), uniqueColors);
+    createOptionWithOthers(document.getElementById("size"), uniqueSizes);
+    handleOtherInput("color");
+    handleOtherInput("size");
+}
+
+function addDefect() {
+    const container = document.getElementById("defectContainer");
+    const div = document.createElement("div");
+    div.className = "defect-entry";
+
+    const selectContainer = document.createElement("div");
+    selectContainer.className = "select-container";
+    const select = document.createElement("select");
+    select.className = "defect-select";
+    defectTypes.forEach(type => {
+        const opt = document.createElement("option");
+        opt.value = type;
+        opt.textContent = type;
+        select.appendChild(opt);
+    });
+    selectContainer.appendChild(select);
+
+    const input = document.createElement("input");
+    input.type = "number";
+    input.name = "defectCount";
+    input.placeholder = "Jumlah";
+    input.className = "defect-count";
+    input.max = 99;
+
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.textContent = "-";
+    removeBtn.onclick = () => div.remove();
+
+    div.appendChild(selectContainer);
+    div.appendChild(input);
+    div.appendChild(removeBtn);
+    container.appendChild(div);
+}
+
+function scanBarcode(fieldId) {
+    if (window.WebViewInterface && typeof window.WebViewInterface.setWebViewString === "function") {
+        window.WebViewInterface.setWebViewString("SCAN_REQUEST:" + fieldId);
+    } else {
+        const dummy = prompt("Simulasi scan barcode (masukkan manual):");
+        if (dummy) document.getElementById(fieldId).value = dummy;
+    }
+}
+
+if (typeof window.WebViewInterface === "object") {
+    window.WebViewInterface.setScanResult = function (message) {
+        const [field, value] = message.split("=");
+        const input = document.getElementById(field);
+        if (input) input.value = value;
+    };
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    // Hide spinner force
+    document.getElementById("spinner").style.display = "none";
+
+    setDateTimeWIB();
+    loadLines();
+    loadDefects();
+    loadKPStyleOptions();
+    loadDefectAreaOptions();
+
+    // Auto-fill checkedBy if user logged in
+    const user = localStorage.getItem("loggedInUser");
+    if (user) {
+        const checkedInput = document.getElementById("checkedBy");
+        checkedInput.value = user;
+        checkedInput.readOnly = true;
+        checkedInput.style.backgroundColor = "#ddd";
+    }
+
+    // Attach form submit listener
+    document.getElementById("qcForm").addEventListener("submit", async function (e) {
+        e.preventDefault();
+        document.getElementById("spinner").style.display = "flex";
+        try {
+            const requiredFields = ["qcName", "kp", "style", "checkedBy", "totalInspeksi", "line"];
+            for (let id of requiredFields) {
+                const el = document.getElementById(id);
+                if (el && !el.value.trim()) {
+                    alert("Harap lengkapi semua data sebelum mengirim.");
+                    el.focus();
+                    document.getElementById("spinner").style.display = "none";
+                    return;
+                }
+            }
+            const datetimeValue = document.getElementById("datetime").value;
+            const formData = new FormData(this);
+            formData.set("Date time", datetimeValue);
+
+            const response = await fetch("https://script.google.com/macros/s/AKfycbwnBnDK85yb5ez5j-cBYTS4JFULupOrnv87rWCOdu_eh3lRdutUUUhj1kRw4eNt-mKh/exec", {
+                method: "POST",
+                body: formData
+            });
+
+            const result = await response.json();
+            alert("Data berhasil dikirim!");
+            this.reset();
+            setDateTimeWIB();
+            document.getElementById("defectContainer").innerHTML = "";
+        } catch (error) {
+            console.error("Fetch error:", error);
+            alert("Gagal mengirim data!\n" + error.message);
+        }
+        document.getElementById("spinner").style.display = "none";
+    });
+});
+</script>
+
+</body>
+</html>
