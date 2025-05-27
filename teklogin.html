@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f1f1f1;
+      padding: 5vw;
+      margin: 0;
+    }
+    .container {
+      max-width: 400px;
+      margin: auto;
+      background: white;
+      padding: 6vw;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .error {
+      color: red;
+      margin-top: 10px;
+    }
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      margin: 8px 0;
+    }
+    .checkbox-container label {
+      margin-left: 8px;
+      font-size: 0.95rem;
+    }
+    @media (max-width: 400px) {
+      .container {
+        padding: 4vw;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h2>🔐 Login</h2>
+  <input type="text" id="username" placeholder="Username" />
+  <input type="password" id="password" placeholder="Password" />
+  <div class="checkbox-container">
+    <input type="checkbox" id="rememberMe" />
+    <label for="rememberMe">Remember me</label>
+  </div>
+  <button onclick="login()">Login</button>
+  <div class="error" id="errorMsg"></div>
+</div>
+
+<script>
+  const SHEET_URL = "https://opensheet.elk.sh/1IeQ8wUE9JxfD7bxMwotY4qieo3cO9PdNpNQON4gk1Jw/login";
+
+  // Auto-fill remembered username
+  window.onload = function() {
+    const rememberedUser = localStorage.getItem("rememberedUser");
+    if (rememberedUser) {
+      document.getElementById("username").value = rememberedUser;
+      document.getElementById("rememberMe").checked = true;
+    }
+  };
+
+  function login() {
+    const uname = document.getElementById("username").value.trim();
+    const pass = document.getElementById("password").value.trim();
+    const remember = document.getElementById("rememberMe").checked;
+    const errorMsg = document.getElementById("errorMsg");
+
+    fetch(SHEET_URL)
+      .then(response => response.json())
+      .then(data => {
+        const user = data.find(u => u.USERNAME === uname && u.PASSWORD === pass);
+        if (user) {
+          localStorage.setItem("loggedInUser", uname);
+          if (remember) {
+            localStorage.setItem("rememberedUser", uname);
+          } else {
+            localStorage.removeItem("rememberedUser");
+          }
+
+          if (user["admin.html"] === "TRUE") {
+  window.location.href = "file:///android_asset/seamseal/sealadmin.html";
+} else if (user["tekuser.html"] === "TRUE" || user["user.html"] === "TRUE") {
+  window.location.href = "tekuser.html";
+} else {
+  errorMsg.textContent = "❌ Akses ditolak. Tidak ada halaman yang bisa dibuka.";
+}
+        } else {
+          errorMsg.textContent = "❌ Username atau password salah.";
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        errorMsg.textContent = "❌ Gagal mengambil data login.";
+      });
+  }
+</script>
+</body>
+</html>

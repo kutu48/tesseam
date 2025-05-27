@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Form Improvement</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #f0f4f8, #d9e2ec);
+      padding: 20px;
+      margin: 0;
+    }
+
+    .form-container {
+      max-width: 800px;
+      margin: auto;
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+
+    h2 {
+      text-align: center;
+      color: #2c3e50;
+    }
+
+    label {
+      font-weight: 600;
+      margin-top: 15px;
+      display: block;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 12px;
+      margin-top: 6px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+
+    button {
+      margin-top: 25px;
+      padding: 12px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.1rem;
+      width: 100%;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    .flex-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .flex-row > div {
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <h2>📋 Form Improvement Proses</h2>
+    <form id="improvementForm">
+      <label for="date">Tanggal</label>
+      <input type="text" id="date" name="DATE" readonly>
+
+      <label for="nama">Nama Teknisi</label>
+      <input type="text" id="nama" name="NAMA TEKNISI" readonly>
+
+      <label for="line">Line</label>
+      <div class="flex-row">
+        <select id="line" name="LINE"></select>
+        <input type="text" id="lineManual" placeholder="Atau ketik manual">
+      </div>
+
+      <label for="style">Style</label>
+      <div class="flex-row">
+        <select id="style" name="STYLE"></select>
+        <input type="text" id="styleManual" placeholder="Atau ketik manual">
+      </div>
+
+      <label for="process">Process Improved</label>
+      <div class="flex-row">
+        <select id="process" name="PROCESS IMPROVED"></select>
+        <input type="text" id="processManual" placeholder="Atau ketik manual">
+      </div>
+
+      <label for="ctBefore">CT Before</label>
+      <input type="number" id="ctBefore" name="CT BEFORE" required>
+
+      <label for="ctAfter">CT After</label>
+      <input type="number" id="ctAfter" name="CT AFTER" required>
+
+      <label for="improvment">Improvement %</label>
+      <input type="text" id="improvment" name="IMPROVMENT %" readonly>
+
+      <label for="unit">Unit</label>
+      <input type="text" id="unit" name="UNIT" required>
+
+      <label for="outputBefore">Hourly Output Before</label>
+      <input type="number" id="outputBefore" name="HOURLY OUTPUT BEFORE" required>
+
+      <label for="outputAfter">Hourly Output After</label>
+      <input type="number" id="outputAfter" name="HOURLY OUTPUT AFTER" required>
+
+      <label for="percent">% Output</label>
+      <input type="text" id="percent" name="%" readonly>
+
+      <label for="action1">Process Action</label>
+      <input type="text" id="action1" name="PROCESS ACTION" required>
+
+      <label for="action2">Process Action 2</label>
+      <input type="text" id="action2" name="PROCESS ACTION 2">
+
+      <label for="keterangan">Keterangan</label>
+      <textarea id="keterangan" name="KETERANGAN" rows="3"></textarea>
+
+      <button type="submit">Submit</button>
+    </form>
+  </div>
+
+  <script>
+    const dateField = document.getElementById('date');
+    const namaField = document.getElementById('nama');
+    const now = new Date();
+    dateField.value = now.toLocaleDateString('id-ID');
+
+    // Nama teknisi dari login
+    const loggedInUser = localStorage.getItem('loggedInUser');
+    namaField.value = loggedInUser ? loggedInUser.toUpperCase() : '';
+
+    // Load dropdown dari Google Sheet
+    fetch('https://opensheet.elk.sh/1IeQ8wUE9JxfD7bxMwotY4qieo3cO9PdNpNQON4gk1Jw/Improvment')
+      .then(res => res.json())
+      .then(data => {
+        const unique = (arr, key) => [...new Set(arr.map(row => row[key]).filter(Boolean))];
+        const fill = (id, values) => {
+          const sel = document.getElementById(id);
+          values.forEach(val => {
+            const opt = document.createElement('option');
+            opt.value = val;
+            opt.textContent = val;
+            sel.appendChild(opt);
+          });
+        };
+        fill("line", unique(data, "LINE"));
+        fill("style", unique(data, "STYLE"));
+        fill("process", unique(data, "PROCESS IMPROVED"));
+      });
+
+    // Sinkronisasi input manual
+    function overrideSelect(selectId, manualId) {
+      const select = document.getElementById(selectId);
+      const manual = document.getElementById(manualId);
+      manual.addEventListener('input', () => {
+        if (manual.value.trim()) {
+          select.value = manual.value.trim();
+        }
+      });
+    }
+
+    overrideSelect("line", "lineManual");
+    overrideSelect("style", "styleManual");
+    overrideSelect("process", "processManual");
+
+    // Hitung otomatis improvement %
+    const ctBefore = document.getElementById("ctBefore");
+    const ctAfter = document.getElementById("ctAfter");
+    const improvement = document.getElementById("improvment");
+
+    const outBefore = document.getElementById("outputBefore");
+    const outAfter = document.getElementById("outputAfter");
+    const percentOut = document.getElementById("percent");
+
+    function calcImprovement() {
+      const before = parseFloat(ctBefore.value);
+      const after = parseFloat(ctAfter.value);
+      if (before && after) {
+        const hasil = ((before - after) / before * 100).toFixed(2);
+        improvement.value = hasil;
+      }
+    }
+
+    function calcOutput() {
+      const b = parseFloat(outBefore.value);
+      const a = parseFloat(outAfter.value);
+      if (b && a) {
+        const hasil = ((a - b) / a * 100).toFixed(2);
+        percentOut.value = hasil + "%";
+      }
+    }
+
+    ctBefore.addEventListener("input", calcImprovement);
+    ctAfter.addEventListener("input", calcImprovement);
+    outBefore.addEventListener("input", calcOutput);
+    outAfter.addEventListener("input", calcOutput);
+
+    // Submit ke Google Apps Script
+    const form = document.getElementById("improvementForm");
+    const submitBtn = form.querySelector("button");
+
+form.addEventListener("submit", function (e) {
+  e.preventDefault();
+
+  // Validasi input manual
+  const line = document.getElementById("line");
+  const lineManual = document.getElementById("lineManual");
+  const style = document.getElementById("style");
+  const styleManual = document.getElementById("styleManual");
+  const process = document.getElementById("process");
+  const processManual = document.getElementById("processManual");
+
+  if (!line.value && !lineManual.value.trim()) {
+    alert("⚠️ Harap pilih atau isi Line secara manual.");
+    line.focus();
+    return;
+  }
+  if (!style.value && !styleManual.value.trim()) {
+    alert("⚠️ Harap pilih atau isi Style secara manual.");
+    style.focus();
+    return;
+  }
+  if (!process.value && !processManual.value.trim()) {
+    alert("⚠️ Harap pilih atau isi Process Improved secara manual.");
+    process.focus();
+    return;
+  }
+
+  // Sync nilai input manual (jika ada)
+  if (lineManual.value.trim()) line.value = lineManual.value.trim();
+  if (styleManual.value.trim()) style.value = styleManual.value.trim();
+  if (processManual.value.trim()) process.value = processManual.value.trim();
+
+  // Lanjutkan submit
+  submitBtn.disabled = true;
+  submitBtn.innerText = "⏳ Mengirim...";
+
+  const formData = new FormData(form);
+  const jsonData = Object.fromEntries(formData.entries());
+
+  fetch("https://script.google.com/macros/s/AKfycbyGGXfnoVjk1GMJ2GaXkyPztdsbudrvhBsf0WqdJP_p3N98dUF4GXGgtx39VfLnKScldg/exec", {
+    method: "POST",
+    body: JSON.stringify(jsonData),
+    headers: { "Content-Type": "application/json" }
+  })
+  .then(r => r.json())
+  .then(res => {
+    submitBtn.innerText = "✅ Tersimpan!";
+    const teknisi = namaField.value;
+    form.reset();
+    namaField.value = teknisi;
+    dateField.value = now.toLocaleDateString('id-ID');
+    setTimeout(() => {
+      submitBtn.disabled = false;
+      submitBtn.innerText = "Submit";
+    }, 1500);
+  })
+  .catch(err => {
+    alert("❌ Gagal menyimpan data.");
+    console.error(err);
+    submitBtn.disabled = false;
+    submitBtn.innerText = "Submit";
+  });
+});
+
+  </script>
+</body>
+</html>

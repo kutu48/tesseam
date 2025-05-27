@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Menu</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #fef7e0;
+      padding: 5vw;
+      margin: 0;
+    }
+    h2 {
+      color: #cc8800;
+      font-size: 6vw;
+      text-align: center;
+    }
+    ul {
+      list-style-type: none;
+      padding: 0;
+    }
+    li {
+      background: #fff9dd;
+      padding: 4vw;
+      margin-bottom: 4vw;
+      border-radius: 2vw;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+      cursor: pointer;
+      font-size: 5vw;
+      text-align: center;
+    }
+    li:hover {
+      background: #fff2b8;
+    }
+
+    @media (min-width: 600px) {
+      h2 {
+        font-size: 2rem;
+      }
+      li {
+        font-size: 1.2rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-radius: 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+<p id="greeting" style="text-align:center; font-size:4vw; color:#666;"></p>
+<script>
+  const user = localStorage.getItem("loggedInUser");
+  document.getElementById("greeting").textContent = `Hello ${user}`;
+</script>
+<h2>👤 IE Teknikal User Menu</h2>
+<ul>
+  <li onclick="alert('Akses ke Form Pengisian Data'); window.location.href='improvement.html';">📝 Isi Data Improvment</li>
+  <li onclick="alert('Akses ke Form Pengisian Data'); window.location.href='/improvement.html';">📝 Isi Data Change Over</li>
+  <li onclick="alert('Lihat Laporan Pribadi'); window.location.href='file:///android_asset/seamseal/sealtoday.html';">📄 Laporan Hari Ini</li>
+  <li onclick="alert('Lihat Laporan Pribadi'); window.location.href='file:///android_asset/seamseal/sealglobal.html';">📄 Laporan Total</li>
+    <li onclick="alert('Lihat Laporan Pribadi'); window.location.href='file:///android_asset/seamseal/sealoprreport.html';">👤 Performa Operator</li>   
+  <li onclick="alert('Logout'); window.location.href='file:///android_asset/seamseal/seallogin.html';">🚪 Logout</li>
+</ul>
+</body>
+</html>
